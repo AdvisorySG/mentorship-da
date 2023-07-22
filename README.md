@@ -10,7 +10,7 @@ First install [Poetry](https://python-poetry.org/docs/#installation). Dependenci
 $ poetry install
 ```
 
-### `nbdime`` Setup
+### `nbdime` Setup
 
 To view Jupyter notebooks with [nbdime](https://github.com/jupyter/nbdime), configure the diff/merge drivers for this repository with the following command:
 

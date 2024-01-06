@@ -4,13 +4,13 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 
 
-def helper_extract_query_params(url):
+def extract_query_params(url):
     url = unquote(url) # make it human readable, not percentages
     query_params = parse_qs(urlparse(url).query)
     
     return query_params
     
-def helper_process_query_params(params):
+def process_query_params(params):
     '''
     Parameters:
     params -> {'size': ['n_20_n'], 'filters[0][field]': ['industries'], 'filters[0][values][0]': ['Information and Communications Technology'], 'filters[0][type]': ['all']}
@@ -49,8 +49,8 @@ def helper_process_query_params(params):
     result = dict(result)
     return result
 
-input_csv_file = input('enter the input csv file name')
-output_csv_file = input('enter the output csv file name')
+input_csv_file = input('enter the input csv file name: ')
+output_csv_file = input('enter the output csv file name: ')
 
 original_df = pd.read_csv(input_csv_file)
 df = original_df.copy(deep=True)

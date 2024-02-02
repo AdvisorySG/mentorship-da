@@ -11,18 +11,21 @@
 # 
 # Written by: Jolene
 # 
+# everyth before the "Analysis on basic counts of application data"
 
 
 import pandas as pd
 import numpy as np
 from elasticsearch import Elasticsearch
 import re
+from dotenv import load_dotenv
+import os
 
 class ProcessApplicationData:
     def __init__(self, user, cloud_id, password):
         self.es = Elasticsearch(
             cloud_id=cloud_id,
-            http_auth=(user, password)
+            basic_auth=(user, password)
         )
         self.mentors = {}
         self.unknown_mentors = []
@@ -31,7 +34,7 @@ class ProcessApplicationData:
         result = self.es.search(index=index, body=query_body)
         return result
 
-    def get_mentor_info_by_name(self, name):
+    def get_mentor_info_by_name(self, name):#Get information for the processed mentor
         search_options = {
             'query': {
                 'bool': {
@@ -92,9 +95,9 @@ class ProcessApplicationData:
         else:
             return False
 
-    def process_mentors_data(self, dataframes):
+    def process_mentors_data(self, dataframes): 
         df = pd.concat(dataframes)
-        df['year'] = np.concatenate([np.full(len(df_i), year_i) for df_i, year_i in dataframes])
+        df['year'] = np.concatenate([np.full(len(df_i), year_i) for df_i, year_i in dataframes]) # TODO: make dataframes into dictionary {2020: df_2020w3, 2021: df_2021w1, 2022: df_2022w1}, so that it contains both info of years and respective waves
         df.columns = ['mentor_name', 'year']
         df = df[df['mentor_name'] != '[INSERT NAME LIST OF WAVE 3 MENTORS]']
 
@@ -122,18 +125,19 @@ class ProcessApplicationData:
         df.to_csv(filename, index=False)
 
 if __name__ == '__main__':
-    CLOUD_ID = "<CLOUD_ID>"
-    PASSWORD = '<PASSWORD>'
-    USER = "jolene"
+    load_dotenv('03AnalysisApplicationData/.env')
+    CLOUD_ID = os.getenv('CLOUD_ID')
+    PASSWORD = os.getenv('PASSWORD')
+    USER = os.getenv('USER')
 
-    mentorship_system = ProcessApplicationData(USER, CLOUD_ID, PASSWORD)
+    mentorship_system = ProcessApplicationData(USER, CLOUD_ID, PASSWORD)    
 
     # Load CSV dataframes
-    df_2020w3 = pd.read_csv('data/2020w3.csv')
-    df_2021w1 = pd.read_csv('data/2021w1.csv')
-    df_2022 = pd.read_csv('data/2022.csv')
+    df_2020w3 = pd.read_csv('03AnalysisApplicationData/data/2020w3.csv')
+    df_2021w1 = pd.read_csv('03AnalysisApplicationData/data/2021w1.csv')
+    df_2022 = pd.read_csv('03AnalysisApplicationData/data/2022.csv')
 
     # Process and save mentor data to CSV
     dataframes = [df_2020w3, df_2021w1, df_2022]
     mentors_df = mentorship_system.process_mentors_data(dataframes)
-    mentorship_system.save_data_to_csv(mentors_df, 'data/mentors.csv')
+    mentorship_system.save_data_to_csv(mentors_df, '03AnalysisApplicationData/data/mentors.csv')

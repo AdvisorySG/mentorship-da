@@ -95,18 +95,38 @@ class ProcessApplicationData:
         else:
             return False
 
-    def process_mentors_data(self, dataframes): 
-        df = pd.concat(dataframes)
-        df['year'] = np.concatenate([np.full(len(df_i), year_i) for df_i, year_i in dataframes]) # TODO: make dataframes into dictionary {2020: df_2020w3, 2021: df_2021w1, 2022: df_2022w1}, so that it contains both info of years and respective waves
+    def process_mentors_data(self, dataframes, years): 
+        # combine all 3 columns into 1
+        df = [pd.concat([df['mentor_1'],df['mentor_2'],df['mentor_3']]) for df in dataframes]
+            
+        #df_2020w3 = pd.concat([df_2020w3['mentor_1'], df_2020w3['mentor_2'], df_2020w3['mentor_3']])
+        #df_2021w1 = pd.concat([df_2021w1['mentor_1'], df_2021w1['mentor_2'], df_2021w1['mentor_3']])
+        #df_2022 = pd.concat([df_2022['mentor_1'], df_2022['mentor_2'], df_2022['mentor_3']])
+        
+        for i in range (len(dataframes)):
+            df[i] = df[i].to_frame().drop_duplicates()
+            df[i] = df[i].assign(year=np.full(len(df[i]), years[i]))
+        df = pd.concat(df)
+
+        # combine all 3 dataframes into 1 and add a column for the year        
+        #df = pd.concat(dataframes)
+        #for i in range(len(years)):
+        #    df['year'] = np.concatenate([np.full(len(df[i]), years[i])]) # TODO: make dataframes into dictionary {2020: df_2020w3, 2021: df_2021w1, 2022: df_2022w1}, so that it contains both info of years and respective waves
+        
+        # rename first column to mentor_name
         df.columns = ['mentor_name', 'year']
+
+        # remove the row with [INSERT NAME LIST OF WAVE 3 MENTORS]
         df = df[df['mentor_name'] != '[INSERT NAME LIST OF WAVE 3 MENTORS]']
+
+        # Clean data (remove NaN rows)
+        df = df.dropna()
 
         df['industries'] = ""
         df['organisation'] = ""
 
         for index, row in df.iterrows():
             name = row['mentor_name'].lower()
-            year = row['year']
 
             if name in self.mentors:
                 mentor = self.mentors[name]
@@ -118,7 +138,51 @@ class ProcessApplicationData:
                 row['organisation'] = mentor['organisation']
             else:
                 self.unknown_mentors.append(name)
+        
+        
+        return df
+    
+    def process_mentors_data_per_application(self, dataframes, years): 
+        df = dataframes
+        
+        # Add in the year column and populate it with the year
+        for i in range (len(dataframes)):
+            df[i] = df[i].assign(year=np.full(len(df[i]), years[i]))
+        df = pd.concat(df)
+        print(df.head())
+        
+        # rename first 3 columns to mentor_1, mentor_2 and mentor_3
+        df.columns = ['mentor_1', 'mentor_2', 'mentor_3', 'year']
 
+        # remove the row with [INSERT NAME LIST OF WAVE 3 MENTORS]
+        df = df[df['mentor_1'] != '[INSERT NAME LIST OF WAVE 3 MENTORS]']
+
+        # Clean data (remove NaN rows)
+        df = df.dropna()
+
+        df['mentor_1_industries'] = ""
+        df['mentor_1_organisation'] = ""
+        df['mentor_2_industries'] = ""
+        df['mentor_2_organisation'] = ""
+        df['mentor_3_industries'] = ""
+        df['mentor_3_organisation'] = ""
+
+        for index, row in df.iterrows():
+            for i in range(1, 4):
+                name = row[f'mentor_{i}'].lower()
+
+                if name in self.mentors:
+                    mentor = self.mentors[name]
+                else:
+                    mentor = self.get_mentor_info_by_name(name)
+
+                if mentor is not None:
+                    row[f"mentor_{i}_industries"] = mentor["industries"]
+                    row[f"mentor_{i}_organisation"] = mentor["organisation"]
+                else:
+                    self.unknown_mentors.append(name)
+        
+        
         return df
 
     def save_data_to_csv(self, df, filename):
@@ -131,13 +195,19 @@ if __name__ == '__main__':
     USER = os.getenv('USER')
 
     mentorship_system = ProcessApplicationData(USER, CLOUD_ID, PASSWORD)    
+    
+    # CSV to read CHANGE HERE TO UPDATE NEW CSV
+    csv_filename = ["2020w3", "2021w1","2022"]
 
     # Load CSV dataframes
-    df_2020w3 = pd.read_csv('03AnalysisApplicationData/data/2020w3.csv')
-    df_2021w1 = pd.read_csv('03AnalysisApplicationData/data/2021w1.csv')
-    df_2022 = pd.read_csv('03AnalysisApplicationData/data/2022.csv')
+    dataframes = [pd.read_csv(f'03AnalysisApplicationData/data/{filename}.csv') for filename in csv_filename]
 
-    # Process and save mentor data to CSV
-    dataframes = [df_2020w3, df_2021w1, df_2022]
-    mentors_df = mentorship_system.process_mentors_data(dataframes)
+    # get first 3 columns of all files and rename them to mentor_1, mentor_2, mentor_3
+    dataframes = [df.iloc[:, 0:3] for df in dataframes]
+    for df in dataframes:
+        df.columns = ['mentor_1', 'mentor_2', 'mentor_3']
+
+    mentors_df = mentorship_system.process_mentors_data(dataframes, csv_filename)
     mentorship_system.save_data_to_csv(mentors_df, '03AnalysisApplicationData/data/mentors.csv')
+    mentors_df = mentorship_system.process_mentors_data_per_application(dataframes, csv_filename)
+    mentorship_system.save_data_to_csv(mentors_df, '03AnalysisApplicationData/data/mentors_per_application.csv')

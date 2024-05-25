@@ -96,6 +96,8 @@ class ProcessApplicationData:
             return False
 
     def process_mentors_data(self, dataframes, years): 
+        print("Processing Mentors Data")
+        print("Preparing Data from CSV")
         # combine all 3 columns into 1
         df = [pd.concat([df['mentor_1'],df['mentor_2'],df['mentor_3']]) for df in dataframes]
             
@@ -107,6 +109,7 @@ class ProcessApplicationData:
             df[i] = df[i].to_frame().drop_duplicates()
             df[i] = df[i].assign(year=np.full(len(df[i]), years[i]))
         df = pd.concat(df)
+        df = df.reset_index(drop=True)
 
         # combine all 3 dataframes into 1 and add a column for the year        
         #df = pd.concat(dataframes)
@@ -125,6 +128,7 @@ class ProcessApplicationData:
         df['industries'] = ""
         df['organisation'] = ""
 
+        print("Retriving Mentor Data")
         for index, row in df.iterrows():
             name = row['mentor_name'].lower()
 
@@ -134,22 +138,23 @@ class ProcessApplicationData:
                 mentor = self.get_mentor_info_by_name(name)
 
             if mentor is not None:
-                row['industries'] = mentor['industries']
-                row['organisation'] = mentor['organisation']
+                df.at[index, 'industries'] = mentor['industries']
+                df.at[index, 'organisation'] = mentor['organisation']
             else:
                 self.unknown_mentors.append(name)
-        
+        print("Function Complete")
         
         return df
     
     def process_mentors_data_per_application(self, dataframes, years): 
+        print("Processing Mentors Data Per Appplication")
+        print("Preparing Data from CSV")
         df = dataframes
-        
         # Add in the year column and populate it with the year
         for i in range (len(dataframes)):
             df[i] = df[i].assign(year=np.full(len(df[i]), years[i]))
         df = pd.concat(df)
-        print(df.head())
+        df = df.reset_index(drop=True)
         
         # rename first 3 columns to mentor_1, mentor_2 and mentor_3
         df.columns = ['mentor_1', 'mentor_2', 'mentor_3', 'year']
@@ -167,6 +172,7 @@ class ProcessApplicationData:
         df['mentor_3_industries'] = ""
         df['mentor_3_organisation'] = ""
 
+        print("Retriving Mentor Data")
         for index, row in df.iterrows():
             for i in range(1, 4):
                 name = row[f'mentor_{i}'].lower()
@@ -177,22 +183,28 @@ class ProcessApplicationData:
                     mentor = self.get_mentor_info_by_name(name)
 
                 if mentor is not None:
-                    row[f"mentor_{i}_industries"] = mentor["industries"]
-                    row[f"mentor_{i}_organisation"] = mentor["organisation"]
+                    df.at[index, f"mentor_{i}_industries"] = mentor["industries"]
+                    df.at[index, f"mentor_{i}_organisation"] = mentor["organisation"]
                 else:
                     self.unknown_mentors.append(name)
         
         
+        print("Function Complete")
         return df
 
     def save_data_to_csv(self, df, filename):
+        print("Saving data to CSV")
         df.to_csv(filename, index=False)
 
 if __name__ == '__main__':
+    # Load dotenv variables
     load_dotenv('03AnalysisApplicationData/.env')
     CLOUD_ID = os.getenv('CLOUD_ID')
     PASSWORD = os.getenv('PASSWORD')
     USER = os.getenv('USER')
+    assert CLOUD_ID is not None, "CLOUD_ID is not set"
+    assert PASSWORD is not None, "PASSWORD is not set"
+    assert USER is not None, "USER is not set"
 
     mentorship_system = ProcessApplicationData(USER, CLOUD_ID, PASSWORD)    
     
